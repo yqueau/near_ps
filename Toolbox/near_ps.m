@@ -216,7 +216,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	% Check semi_calibrated
 	if(~isfield(params,'semi_calibrated'))
 		disp('WARNING: semi_calibrated parameter not provided in PARAMS.semi_calibrated, using default values')
-		params.semi_calibrated = 1;
+		params.semi_calibrated = 0;
 	end
 	semi_calibrated = params.semi_calibrated; clear params.semi_calibrated;
 	if(semi_calibrated ~= 1 & semi_calibrated ~= 0)
@@ -371,7 +371,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	elseif(strcmp(estimator,'Lp'))
 		phi_fcn = @(x) (abs(x)).^lambda;
 		thr_norm = 1e-2;
-		w_fcn = @(x) epsil.*(max(thr_norm,abs(x))).^(lambda-2);
+		w_fcn = @(x) lambda.*(max(thr_norm,abs(x))).^(lambda-2);
 	elseif(strcmp(estimator,'GM'))
 		phi_fcn = @(x) x.^2./(x.^2+lambda^2);
 		w_fcn = @(x) 2*lambda^2./((x.^2+lambda^2).^2);	
@@ -588,8 +588,9 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 			Ich = I(:,:,ch);
 			r(:,:,ch) = reshape(r_fcn(rho_tilde(:,ch),psi(:),Ich(:)),npix,nimgs);
 			w(:,:,ch) = w_fcn(r(:,:,ch));
-			rho_tilde(:,ch) = (sum(w(:,:,ch).*I(:,:,ch).*phi_chi,2))./(sum(w(:,:,ch).*(phi_chi).^2,2));
-			rho_tilde(isnan(rho_tilde)) = 0;
+			denom = (sum(w(:,:,ch).*(phi_chi).^2,2));
+			idx_ok = find(denom>0);
+			rho_tilde(idx_ok,ch) = (sum(w(idx_ok,:,ch).*I(idx_ok,:,ch).*phi_chi(idx_ok,:),2))./denom(idx_ok);
 		end
 
 		% Log-depth update
@@ -638,7 +639,9 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 		for ch = 1:nchannels
 			rhoch = rho(:,:,ch);
 			rhoch(imask) = rho_tilde(:,ch).*dz(imask);
-			rhoch(abs(rhoch)>median(rhoch(imask))+5*std(rhoch(imask))) = 0;
+			max_val = median(rhoch(imask))+8*std(rhoch(imask));
+			rhoch(rhoch>max_val) = max_val;
+			rhoch(rhoch<0) = 0;
 			rho(:,:,ch) = rhoch;
 		end
 		XYZ = cat(3,z.*u_tilde,z.*v_tilde,z);
