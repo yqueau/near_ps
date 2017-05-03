@@ -3,7 +3,7 @@ close all
 
 addpath('Toolbox/');
 
-dataset = 'Statuette';
+dataset = 'Box';
 do_write_obj = 0;	% Set to 0 to de-active OBJ writing, to 1 to activate it
 
 %%% Set dataset
@@ -23,7 +23,6 @@ if(K(1,3)==0) K = K';end % Matlab uses a transposed definition of intrinsics mat
 calib.S = S; clear S; % Locations (nimgs x 3)
 calib.Dir = Dir; clear Dir; % Orientations (nimgs x 3)
 calib.mu = mu; clear mu; % Anisotropy factors (nimgs x 1)
-calib.Phi = Phi; clear Phi; % Intensities (nimgs x nchannels)
 calib.K = K; clear K; % Intrinsics (3 x 3)
 
 %%% Read dataset
@@ -59,10 +58,10 @@ data.mask = mask; clear mask; % Images (nrows x ncols x nchannels x nimgs)
 disp('Displaying data');
 figure(1001)
 subplot(3,1,1)
-imshow(uint8(255*data.I(:,:,:,1)./max(data.I(:))))
+imshow(uint8(255*data.I(:,:,1)./max(data.I(:))))
 title('$$I^1$$','Interpreter','Latex','Fontsize',18);
 subplot(3,1,2)
-imshow(uint8(255*data.I(:,:,:,2)./max(data.I(:))))
+imshow(uint8(255*data.I(:,:,2)./max(data.I(:))))
 title('$$I^2$$','Interpreter','Latex','Fontsize',18);
 subplot(3,1,3)
 imshow(uint8(255*data.mask))
@@ -71,14 +70,18 @@ drawnow
 
 %%% Set parameters
 disp('Setting parameters');
+params.semi_calibrated = 1; % Automatically estimate intensities
 params.precond = 'cmg'; % Use multigrid preconditioner
 params.z0 = 700*double(data.mask); % Initial depth map: a plane at 700mm from camera
-params.estimator = 'Cauchy'; % Cauchy M-estimator
-params.lambda = 0.1; % Cauchy's scale parameter
+params.estimator = 'Lp'; % Lp norm optimization
+params.lambda = 0.9; % p-norm that we used (<1 is nonconvex)
 params.indices = 1:nimgs; % Use all data
-params.ratio = 1; % Do not downsample
+params.ratio = 4; % Downsampling 
 params.self_shadows = 1; % Explicitly take into account self-shadows
 params.display = 1; % Display result at each iteration
+
+%%% Convert images to gray
+data.I = squeeze(mean(data.I,3));
 
 %%% Solve photometric stereo
 disp('Solving photometric stereo');

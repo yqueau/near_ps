@@ -59,10 +59,10 @@ data.mask = mask; clear mask; % Images (nrows x ncols x nchannels x nimgs)
 disp('Displaying data');
 figure(1001)
 subplot(3,1,1)
-imshow(uint8(255*data.I(:,:,1)./max(data.I(:))))
+imshow(uint8(255*data.I(:,:,:,1)./max(data.I(:))))
 title('$$I^1$$','Interpreter','Latex','Fontsize',18);
 subplot(3,1,2)
-imshow(uint8(255*data.I(:,:,2)./max(data.I(:))))
+imshow(uint8(255*data.I(:,:,:,2)./max(data.I(:))))
 title('$$I^2$$','Interpreter','Latex','Fontsize',18);
 subplot(3,1,3)
 imshow(uint8(255*data.mask))
