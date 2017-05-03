@@ -87,25 +87,20 @@ The inner conjugate gradient iterations can be controlled by:
 ## Demo
 
 The following demo files are provided: 
+
 - `demo_1_calibrated_gray_LS_ps.m` : demo of fast calibrated PS using graylevel-converted images, least-squares estimator, no self-shadows modeling, and image downsampling. If downsampling is removed and CMG preconditioning is used, this recreates the result from Fig. 15 in [1]. 
+
 - `demo_2_calibrated_color_robust_ps.m` : demo of calibrated PS using full-size RGB images, Cauchy's robust M-estimator and explicit self-shadows modeling. This recreates the result from Fig. 16 in [1].
+
 - `demo_3_semicalibrated_color_robust_ps.m` : same, but automatically inferring the lighting intensities. Instead of the optimization over the rank-1 matrix manifold as avised in [2], this script performs simple alternating optimization. Convergence guarantees are thus lost, but in practice the same results are obtained. This script generates result akin to Fig. 3 in [2], though in color. 
 
-To reproduce results from [2], select the appropriate dataset, convert images and light intensities (using the mean over the channels for instance) and use the folowing options:
-- Cauchy's estimator with lambda = 0.1
-- self_shadows = 1
-- indices = 1:nimgs
-- semi_calibrated = 1
-- CMG preconditioner
+- `demo_4_box.m` : test on the box dataset from Fig. 4 in [2], illustrating Lp norm regression, p<1
 
-To reproduce results from Section 5 in [1], use RGB images with the following options: 
-- Cauchy's estimator with lambda = 0.1
-- self_shadows = 1
-- indices = 2:nimgs-2
-- semi_calibrated = 0
-- CMG preconditioner
+- `demo_5_human.m` : test on a human face, reproduces Fig. 17 in [1]
 
-Warning: for now it is not possible to use semi_calibrated PS if the "indices" variable is not equal to "1:nimgs". 
+- `demo_6_comic.m` : test on a comic book to illustrate estimation using Geman-McClure's function, as well as a failure case of our method: albedo estimation is perfect, but shape is not satisfactory around black areas. Similar to Fig. 20 in [1]
+
+- `demo_7_dental.m` : test on a plaster dentail with uniform albedo. Illustrates another failure case: due to strong shadowing, estimated albedo and shape are corrupted in areas where shadows appear in most of the images. Similar to Fig. 19 in [1]
  
 
 ## Dependencies
