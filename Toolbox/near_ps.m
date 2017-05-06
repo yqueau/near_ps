@@ -150,7 +150,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	end
 	% Check intrinsics
 	if(~isfield(calib,'K'))
-		disp('ERROR: intrinsics not provided in DATA.K')
+		disp('ERROR: intrinsics not provided in CALIB.K')
 		return;
 	end
 	K = double(calib.K); clear calib.K;
@@ -571,6 +571,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 		if(semi_calibrated)
 			% Phi update
 			for ch = 1:nchannels
+				Ich = I(:,:,ch);
 				r(:,:,ch) = reshape(r_fcn(rho_tilde(:,ch),psi(:),Ich(:)),npix,nimgs);
 				w(:,:,ch) = w_fcn(r(:,:,ch));
 				rho_psi_chi = phi_chi.*repmat(rho_tilde(:,ch),[1 nimgs]);
