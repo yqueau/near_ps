@@ -1,5 +1,5 @@
 # Codes_Near_PS
-Code for solving photometric stereo under calibrated or semi-calibrated near point light source illumination (e.g., LEDs).
+Matlab codes for photometric stereo under calibrated or semi-calibrated near point light source illumination (e.g., LEDs).
 
 ## Introduction
 
