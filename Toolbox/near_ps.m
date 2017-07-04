@@ -94,7 +94,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 %	=== CREDITS ===
 %
 %	This is an implementation of the method described in Section 4 of:
-%	[1]	"Modeling, Calibrating and Solving LED-based Photometric Stereo"
+%	[1]	"LED-based Photometric Stereo: Modeling, Calibration and Numerical Solution"
 %		Quéau et al.
 %		2017 
 %
@@ -384,8 +384,8 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	end
 	% Self shadow function psi(x) and derivative psi'(x)
 	if(self_shadows)
-		psi_fcn = @(x) max(x,0);     
-		chi_fcn = @(x) double(x>=0); 
+		psi_fcn = @(x) max(x,0);		% \{.\}_+ operator in [1]
+		chi_fcn = @(x) double(x>=0); 	
 	else
 		psi_fcn = @(x) x;   
 		chi_fcn = @(x) 1*ones(size(x));	
@@ -508,12 +508,12 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%%% Initial energy
-	shading_fcn = @(z,tz) (spdiags(reshape(fx*tz(:,:,1)-px_rep.*tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dx_rep+spdiags(reshape(fy*tz(:,:,2)-py_rep.*tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dy_rep)*z-reshape(tz(:,:,3),npix*nimgs,1);
-	r_fcn = @(rho,shadz,II) repmat(rho,[nimgs 1]).*psi_fcn(shadz)-II; % residual
-	J_fcn = @(rho,shadz,II) sum(phi_fcn(r_fcn(rho,shadz,II))); % energy
+	shading_fcn = @(z,tz) (spdiags(reshape(fx*tz(:,:,1)-px_rep.*tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dx_rep+spdiags(reshape(fy*tz(:,:,2)-py_rep.*tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dy_rep)*z-reshape(tz(:,:,3),npix*nimgs,1);	% zeta in [1] (Eq. 4.6)
+	r_fcn = @(rho,shadz,II) repmat(rho,[nimgs 1]).*psi_fcn(shadz)-II; % residual (Eq. (4.5))
+	J_fcn = @(rho,shadz,II) sum(phi_fcn(r_fcn(rho,shadz,II))); % energy (Eq. (4.4))
 	energy = 0;
-	[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask),v_tilde(imask));
-	psi = reshape(shading_fcn(z_tilde,Tz),npix,nimgs);
+	[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask),v_tilde(imask)); % Compute t field (Eq. (3.14))
+	psi = reshape(shading_fcn(z_tilde,Tz),npix,nimgs); % \{ \chi \}_+ in [1]
 	for ch = 1:nchannels
 		Ich = I(:,:,ch);
 		energy = energy+J_fcn(rho_tilde(:,ch),psi(:),Ich(:));
