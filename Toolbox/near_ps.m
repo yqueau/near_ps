@@ -405,11 +405,12 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 			end
 		end	
 	end
+	max_I = max(I(:));
 	I = I./max(I(:));
 	% Scaled pixel units
 	[uu,vv] = meshgrid(1:ncols,1:nrows);
-	u_tilde = (uu - x0)./fx; 
-	v_tilde = (vv - y0)./fy;
+	u_tilde = (uu - x0); 
+	v_tilde = (vv - y0);
 	clear uu vv x0 y0
 	% Sort images to remove shadows and higlights
 	disp('Sorting to remove shadows and highlights...')
@@ -491,9 +492,8 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	clear z0
 	z(mask==0) = NaN;
 	z_tilde = log(z(imask)); 
-	rho = ones(nrows,ncols,nchannels);
-	rho_tilde = ones(npix,nchannels); 
-	XYZ = cat(3,z.*u_tilde,z.*v_tilde,z);
+	rho = ones(nrows,ncols,nchannels)./max_I;
+	XYZ = cat(3,z.*u_tilde./fx,z.*v_tilde./fy,z);
 	zx = Dx*z_tilde;
 	zy = Dy*z_tilde;
 	Nx = zeros(nrows,ncols);
@@ -504,6 +504,8 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	Nz(imask) = -u_tilde(imask).*zx-v_tilde(imask).*zy-1;
 	dz = sqrt(Nx.^2+Ny.^2+Nz.^2);
 	N = cat(3,Nx./dz,Ny./dz,Nz./dz);
+	rho_tilde = reshape(rho./repmat(dz,[1 1 nchannels]),nrows*ncols,nchannels);
+	rho_tilde = rho_tilde(imask,:);
 	tab_nrj = [];
 	
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -512,7 +514,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	r_fcn = @(rho,shadz,II) repmat(rho,[nimgs 1]).*psi_fcn(shadz)-II; % residual (Eq. (4.5))
 	J_fcn = @(rho,shadz,II) sum(phi_fcn(r_fcn(rho,shadz,II))); % energy (Eq. (4.4))
 	energy = 0;
-	[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask),v_tilde(imask)); % Compute t field (Eq. (3.14))
+	[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask)./fx,v_tilde(imask)./fy); % Compute t field (Eq. (3.14))
 	psi = reshape(shading_fcn(z_tilde,Tz),npix,nimgs); % \{ \chi \}_+ in [1]
 	for ch = 1:nchannels
 		Ich = I(:,:,ch);
@@ -645,11 +647,11 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 			rhoch(rhoch<0) = 0;
 			rho(:,:,ch) = rhoch;
 		end
-		XYZ = cat(3,z.*u_tilde,z.*v_tilde,z);
+		XYZ = cat(3,z.*u_tilde./fx,z.*v_tilde./fy,z);
 
 		% Convergence test
 		energy_new = 0;
-		[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask),v_tilde(imask));
+		[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask)./fx,v_tilde(imask)./fy);
 		psi = reshape(shading_fcn(z_tilde,Tz),npix,nimgs);
 		for ch = 1:nchannels
 			Ich = I(:,:,ch);
