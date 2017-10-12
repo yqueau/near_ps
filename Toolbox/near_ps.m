@@ -339,11 +339,6 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 		disp('ERROR: max number of iterations for PCG should be positive');
 		return;
 	end
-	% Check if semicalibrated is used without outlier removal
-	if(semi_calibrated & (indices(1)~= 1 | indices(end)~=nimgs))
-		disp('ERROR: semicalibrated PS available only for marams.indices = 1:nimgs for now');
-		return
-	end
 	clear params
 	disp(' ');
 
@@ -370,7 +365,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	    w_fcn = @(x) 2*lambda^2./(x.^2+lambda^2);	
 	elseif(strcmp(estimator,'Lp'))
 		phi_fcn = @(x) (abs(x)).^lambda;
-		thr_norm = 1e-2;
+		thr_norm = 5e-3;
 		w_fcn = @(x) lambda.*(max(thr_norm,abs(x))).^(lambda-2);
 	elseif(strcmp(estimator,'GM'))
 		phi_fcn = @(x) x.^2./(x.^2+lambda^2);
@@ -412,45 +407,6 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	u_tilde = (uu - x0); 
 	v_tilde = (vv - y0);
 	clear uu vv x0 y0
-	% Sort images to remove shadows and higlights
-	disp('Sorting to remove shadows and highlights...')
-	disp(' ');
-	nb_images_kept = length(indices);
-	if(nchannels == 3)	
-		[~,J_sorted,J_sorted_dim] = sort_linear_index(squeeze(mean(I,3)),3,'descend');
-		I_sorted = zeros(nrows,ncols,nchannels,nimgs);
-		for ch = 1:nchannels
-			Ich = squeeze(I(:,:,ch,:));
-			I_sorted(:,:,ch,:) = Ich(J_sorted);
-		end
-		clear Ich 
-		I_sorted = I_sorted(:,:,:,indices);
-	else
-		[~,J_sorted,J_sorted_dim] = sort_linear_index(I,3,'descend');
-		I_sorted = zeros(nrows,ncols,nimgs);
-		I_sorted(:) = I(J_sorted);
-		I_sorted = I_sorted(:,:,indices);
-	end
-	S_sorted = zeros(nrows,ncols,nimgs,3);
-	Ns_sorted = zeros(nrows,ncols,nimgs,3);
-	for ch = 1:3
-		S_sorted(:,:,:,ch) = reshape(S(J_sorted_dim,ch),[nrows ncols nimgs]);
-		Ns_sorted(:,:,:,ch) = reshape(Dir(J_sorted_dim,ch),[nrows ncols nimgs]);
-	end
-	mu_sorted = reshape(mu(J_sorted_dim),[nrows ncols nimgs]);
-	S_sorted = S_sorted(:,:,indices,:);
-	Ns_sorted = Ns_sorted(:,:,indices,:);
-	mu_sorted = mu_sorted(:,:,indices);
-	if(nchannels>1)
-		I = permute(I_sorted,[1 2 4 3]); 
-	else
-		I = I_sorted; 
-	end
-	S = S_sorted; 
-	Ns = Ns_sorted; 
-	mu = mu_sorted;
-	clear S_sorted Ns_sorted mu_sorted I_sorted J_sorted J_sorted_dim Dir nb_images_kept;
-	nimgs = length(indices);
 	% Use a bounding box
 	[ii_mask,jj_mask] = find(mask>0);
 	imin = min(ii_mask);
@@ -461,9 +417,6 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	u_tilde = u_tilde(imin:imax,jmin:jmax);
 	v_tilde = v_tilde(imin:imax,jmin:jmax);
 	I = I(imin:imax,jmin:jmax,:,:);
-	S = S(imin:imax,jmin:jmax,:,:);
-	Ns = Ns(imin:imax,jmin:jmax,:,:);
-	mu = mu(imin:imax,jmin:jmax,:);
 	mask = mask(imin:imax,jmin:jmax,:,:);
 	imask = find(mask>0);
 	npix = length(imask);
@@ -475,15 +428,18 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	Dx_rep = repmat(Dx,[nimgs 1]);
 	Dy_rep = repmat(Dy,[nimgs 1]);
 	% Vectorize data
-	I = reshape(I,nrows*ncols,nimgs,nchannels);
+	I = reshape(I,nrows*ncols,nchannels,nimgs);
+	I = permute(I,[1 3 2]);
 	I = I(imask,:,:);
-	S = reshape(S,nrows*ncols,nimgs,3);
-	S = S(imask,:,:);
-	Ns = reshape(Ns,nrows*ncols,nimgs,3);
-	Ns = Ns(imask,:,:);
-	mu = reshape(mu,nrows*ncols,nimgs);
-	mu = mu(imask,:);
-	
+	% Sort images to remove shadows and higlights
+	disp('Sorting to remove shadows and highlights...')
+	disp(' ');
+	[foo,J] = sort_linear_index(I,2,'descend');clear foo
+	W_idx = zeros(size(I));
+	W_idx(:,indices,:) = 1;
+	W_idx(:) = W_idx(J(:));
+	clear J
+		
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	%%% Initialize variables
 	disp(sprintf('Starting algorithm with %d pixels, %d images, %d channels',npix,nimgs,nchannels));
@@ -514,17 +470,16 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	r_fcn = @(rho,shadz,II) repmat(rho,[nimgs 1]).*psi_fcn(shadz)-II; % residual (Eq. (4.5))
 	J_fcn = @(rho,shadz,II) sum(phi_fcn(r_fcn(rho,shadz,II))); % energy (Eq. (4.4))
 	energy = 0;
-	[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask)./fx,v_tilde(imask)./fy); % Compute t field (Eq. (3.14))
+	[Tz,grad_Tz] = t_fcn(z_tilde,S,Dir,mu,u_tilde(imask)./fx,v_tilde(imask)./fy); % Compute t field (Eq. (3.14))
 	psi = reshape(shading_fcn(z_tilde,Tz),npix,nimgs); % \{ \chi \}_+ in [1]
 	for ch = 1:nchannels
 		Ich = I(:,:,ch);
-		energy = energy+J_fcn(rho_tilde(:,ch),psi(:),Ich(:));
+		Wch_idx = W_idx(:,:,ch);
+		energy = energy+J_fcn(rho_tilde(:,ch),Wch_idx(:).*psi(:),Wch_idx(:).*Ich(:));
 	end
 	disp(sprintf('== it. 0 - energy : %.20f',energy));
 	disp(' ');
 	tab_nrj(1) = energy;
-	
-	
 
 	% Display Initial result
 	if(display)
@@ -543,7 +498,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 
 
 		figure(hfig3)
-		imagesc(rho)
+		imagesc(rho./max(rho(:)))
 		if(nchannels==1)
 			colormap gray
 			colorbar
@@ -575,7 +530,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 			for ch = 1:nchannels
 				Ich = I(:,:,ch);
 				r(:,:,ch) = reshape(r_fcn(rho_tilde(:,ch),psi(:),Ich(:)),npix,nimgs);
-				w(:,:,ch) = w_fcn(r(:,:,ch));
+				w(:,:,ch) = w_fcn(r(:,:,ch)).*W_idx(:,:,ch);
 				rho_psi_chi = phi_chi.*repmat(rho_tilde(:,ch),[1 nimgs]);
 				Phi_rel(:,ch) = transpose(((sum(w(:,:,ch).*I(:,:,ch).*rho_psi_chi,1)))./(sum(w(:,:,ch).*(rho_psi_chi).^2,1)));
 				I(:,:,ch) = bsxfun(@rdivide,I(:,:,ch),transpose(Phi_rel(:,ch)));
@@ -590,7 +545,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 		for ch = 1:nchannels
 			Ich = I(:,:,ch);
 			r(:,:,ch) = reshape(r_fcn(rho_tilde(:,ch),psi(:),Ich(:)),npix,nimgs);
-			w(:,:,ch) = w_fcn(r(:,:,ch));
+			w(:,:,ch) = w_fcn(r(:,:,ch)).*W_idx(:,:,ch);
 			denom = (sum(w(:,:,ch).*(phi_chi).^2,2));
 			idx_ok = find(denom>0);
 			rho_tilde(idx_ok,ch) = (sum(w(idx_ok,:,ch).*I(idx_ok,:,ch).*phi_chi(idx_ok,:),2))./denom(idx_ok);
@@ -604,7 +559,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 			rho_rep(:,(ch-1)*nimgs+1:ch*nimgs) = repmat(rho_tilde(:,ch),[1 nimgs]);
 		end
 		r = reshape(r,npix,nchannels*nimgs);
-		w = w_fcn(r);		
+		w = w_fcn(r).*reshape(W_idx,npix,nchannels*nimgs);		
 		D = repmat(chi,[1 nchannels]).*(rho_rep.^2).*w;
 		A = spdiags(reshape(fx*Tz(:,:,1)-px_rep.*Tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dx_rep+spdiags(reshape(fy*Tz(:,:,2)-py_rep.*Tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dy_rep;
 		A = A+sparse(1:npix*nimgs,repmat(1:npix,[1 nimgs]),transpose((spdiags(reshape(fx*grad_Tz(:,:,1)-px_rep.*grad_Tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dx_rep+spdiags(reshape(fy*grad_Tz(:,:,2)-py_rep.*grad_Tz(:,:,3),npix*nimgs,1),0,npix*nimgs,npix*nimgs)*Dy_rep)*z_tilde-reshape(grad_Tz(:,:,3),npix*nimgs,1)));
@@ -651,11 +606,12 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 
 		% Convergence test
 		energy_new = 0;
-		[Tz,grad_Tz] = t_fcn(z_tilde,S,Ns,mu,u_tilde(imask)./fx,v_tilde(imask)./fy);
+		[Tz,grad_Tz] = t_fcn(z_tilde,S,Dir,mu,u_tilde(imask)./fx,v_tilde(imask)./fy);
 		psi = reshape(shading_fcn(z_tilde,Tz),npix,nimgs);
 		for ch = 1:nchannels
 			Ich = I(:,:,ch);
-			energy_new = energy_new+J_fcn(rho_tilde(:,ch),psi(:),Ich(:));
+			Wch_idx = W_idx(:,:,ch);
+			energy_new = energy_new+J_fcn(rho_tilde(:,ch),Wch_idx(:).*psi(:),Wch_idx(:).*Ich(:));
 		end
 		relative_diff = abs(energy_new-energy)./energy_new;
 		disp(sprintf('== it. %d - energy : %.6f - relative diff : %.6f',it,energy_new,relative_diff));
@@ -866,7 +822,7 @@ end
 
 function [T_field,grad_t] = t_fcn(z,Xs,Dir,mu,u_tilde,v_tilde) 
 	npix = length(z);
-	nimgs = size(Xs,2);
+	nimgs = size(Xs,1);
 	
 	%%% Current mesh
 	exp_z = exp(z);
@@ -880,14 +836,14 @@ function [T_field,grad_t] = t_fcn(z,Xs,Dir,mu,u_tilde,v_tilde)
 	end
 	for i = 1:nimgs
 		% Unit lighting field
-		T_field(:,i,1) = Xs(:,i,1)-XYZ(:,1);
-		T_field(:,i,2) = Xs(:,i,2)-XYZ(:,2);
-		T_field(:,i,3) = Xs(:,i,3)-XYZ(:,3);
+		T_field(:,i,1) = Xs(i,1)-XYZ(:,1);
+		T_field(:,i,2) = Xs(i,2)-XYZ(:,2);
+		T_field(:,i,3) = Xs(i,3)-XYZ(:,3);
 		normS_i = sqrt(T_field(:,i,1).^2+T_field(:,i,2).^2+T_field(:,i,3).^2);
 		% Attenuation = anisotropy / squared distance
-		scal_prod = -T_field(:,i,1).*Dir(:,i,1)-T_field(:,i,2).*Dir(:,i,2)-T_field(:,i,3).*Dir(:,i,3);
-		a_field(:,i) = (scal_prod.^mu(:,i))./(normS_i.^(3+mu(:,i)));
-		da_field(:,i) = (mu(:,i).*scal_prod.^(mu(:,i)-1).*(XYZ(:,1).*Dir(:,i,1)+XYZ(:,2).*Dir(:,i,2)+XYZ(:,3).*Dir(:,i,3)))./(normS_i.^(mu(:,i)+3))-(mu(:,i)+3).*(scal_prod.^mu(:,i)).*(-T_field(:,i,1).*XYZ(:,1)-T_field(:,i,2).*XYZ(:,2)-T_field(:,i,3).*XYZ(:,3))./(normS_i.^(mu(:,i)+5));
+		scal_prod = -T_field(:,i,1).*Dir(i,1)-T_field(:,i,2).*Dir(i,2)-T_field(:,i,3).*Dir(i,3);
+		a_field(:,i) = (scal_prod.^mu(i))./(normS_i.^(3+mu(i)));
+		da_field(:,i) = (mu(i).*scal_prod.^(mu(i)-1).*(XYZ(:,1).*Dir(i,1)+XYZ(:,2).*Dir(i,2)+XYZ(:,3).*Dir(i,3)))./(normS_i.^(mu(i)+3))-(mu(i)+3).*(scal_prod.^mu(i)).*(-T_field(:,i,1).*XYZ(:,1)-T_field(:,i,2).*XYZ(:,2)-T_field(:,i,3).*XYZ(:,3))./(normS_i.^(mu(i)+5));
 		% Final lighting field
 		T_field(:,i,1) = T_field(:,i,1).*a_field(:,i);
 		T_field(:,i,2) = T_field(:,i,2).*a_field(:,i);
@@ -895,8 +851,8 @@ function [T_field,grad_t] = t_fcn(z,Xs,Dir,mu,u_tilde,v_tilde)
 	end
 	if(nargout>1)
 		grad_t = zeros(npix,nimgs,3);
-		grad_t(:,:,1) = bsxfun(@times,-exp_z.*u_tilde,a_field+da_field)+da_field.*Xs(:,:,1);		
-		grad_t(:,:,2) = bsxfun(@times,-exp_z.*v_tilde,a_field+da_field)+da_field.*Xs(:,:,2);	
-		grad_t(:,:,3) = bsxfun(@times,-exp_z,a_field+da_field)+da_field.*Xs(:,:,3);
-	end	
+		grad_t(:,:,1) = bsxfun(@times,-exp_z.*u_tilde,a_field+da_field)+bsxfun(@times,da_field,Xs(:,1)');		
+		grad_t(:,:,2) = bsxfun(@times,-exp_z.*v_tilde,a_field+da_field)+bsxfun(@times,da_field,Xs(:,2)');	
+		grad_t(:,:,3) = bsxfun(@times,-exp_z,a_field+da_field)+bsxfun(@times,da_field,Xs(:,3)');
+	end
 end

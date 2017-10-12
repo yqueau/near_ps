@@ -12,7 +12,7 @@ Features:
 - Optional automatic estimation of lighting intensities (semi-calibrated setup)
 - Isotropic or anisotropic (imperfect Lambertian) sources
 
-[1] "LED-based Photometric Stereo: Modeling, Calibration and Numerical Solution", Yvain Quéau et al., 2017. 
+[1] "LED-based Photometric Stereo: Modeling, Calibration and Numerical Solution", Yvain Quéau et al., Journal of Mathematical Imaging and Vision, 2017 (dx.doi.org/10.1007/s10851-017-0761-1) 
 
 [2] "Semi-calibrated Near-Light Photometric Stereo", Yvain Quéau et al., Proceedings of the international conference on Scale-Space and Variational Methods for computer vision (SSVM 2017). 
 
@@ -69,7 +69,7 @@ Inputs:
   * params.estimator sets the estimator. LS (least-squares) is a good initial choice, but robust M-estimators may be more accurate, though they require the parameter lambda to be set
   * params.lambda sets the M-estimator parameter. For Cauchy estimator, we use 0.1 in our datasets. L1 norm optimization is achieved by setting Lp as estimator, and 1 for lambda
   * params.self_shadows includes self-shadows in  the model or not
-  * params.indices can be used to automatically remove brightest or darkest levels in each pixel. This can be useful in the presence of specularities or strong shadowing. Warning: this is not implemented for the semi-calibrated case yet
+  * params.indices can be used to automatically remove brightest or darkest levels in each pixel. This can be useful in the presence of specularities or strong shadowing. 
   * params.semi_calibrated enables automatic intensity refinement
 
 For fast debugging or proof of concept, it may be useful to reduce the size of the data, to limit the number of iterations, or to display live surface, albedo, normals and energy:
