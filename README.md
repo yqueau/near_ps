@@ -8,7 +8,7 @@ These Matlab codes implement the method for photometric stereo under point light
 Features:
 - Several calibrated datasets
 - Graylevel or RGB-valued images
-- Various robust estimation techniques (pixelwise image selection, least-squares or M-estimation, ...)
+- Robust estimation through M-estimation and explicit self-shadow modeling
 - Optional automatic estimation of lighting intensities (semi-calibrated setup)
 - Isotropic or anisotropic (imperfect Lambertian) sources
 
