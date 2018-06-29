@@ -12,7 +12,7 @@ Features:
 - Optional automatic estimation of lighting intensities (semi-calibrated setup)
 - Isotropic or anisotropic (imperfect Lambertian) sources
 
-[1] "LED-based Photometric Stereo: Modeling, Calibration and Numerical Solution", Yvain Quéau et al., Journal of Mathematical Imaging and Vision, 2017 (dx.doi.org/10.1007/s10851-017-0761-1) 
+[1] "LED-based Photometric Stereo: Modeling, Calibration and Numerical Solution", Yvain Quéau et al., Journal of Mathematical Imaging and Vision 60(3), pp. 313--340 (2018) (dx.doi.org/10.1007/s10851-017-0761-1) 
 
 [2] "Semi-calibrated Near-Light Photometric Stereo", Yvain Quéau et al., Proceedings of the international conference on Scale-Space and Variational Methods for computer vision (SSVM 2017). 
 
@@ -71,6 +71,7 @@ Inputs:
   * params.self_shadows includes self-shadows in  the model or not
   * params.indices can be used to automatically remove brightest or darkest levels in each pixel. This can be useful in the presence of specularities or strong shadowing. 
   * params.semi_calibrated enables automatic intensity refinement
+  * params.scales sets the number of scales for the pyramidal estimation. If lighting intensities are appropriately calibrated, the multi-scale approach should reduce a lot the impact of depth initialization. 
 
 For fast debugging or proof of concept, it may be useful to reduce the size of the data, to limit the number of iterations, or to display live surface, albedo, normals and energy:
   * params.ratio downsamples images by a factor of ratio
@@ -88,19 +89,11 @@ The inner conjugate gradient iterations can be controlled by:
 
 The following demo files are provided: 
 
-- `demo_1_calibrated_gray_LS_ps.m` : demo of fast calibrated PS using graylevel-converted images, least-squares estimator, no self-shadows modeling, and image downsampling. 
+- `demo_1_calibrated_gray_LS_ps.m` : demo of calibrated PS using graylevel-converted images, least-squares estimator, no self-shadows modeling. 
 
-- `demo_2_calibrated_color_robust_ps.m` : demo of calibrated PS using full-size RGB images, Cauchy's robust M-estimator and explicit self-shadows modeling. 
+- `demo_2_calibrated_color_robust_ps.m` : demo of calibrated PS using RGB images, robust robust M-estimation and explicit self-shadows modeling. 
 
-- `demo_3_semicalibrated_color_robust_ps.m` : same, but automatically inferring the lighting intensities. Instead of the optimization over the rank-1 matrix manifold as avised in [2], this script performs simple alternating optimization. Convergence guarantees may be lost, but in practice the same results are obtained. 
-
-- `demo_4_box.m` : test on a box dataset, illustrating Lp norm regression, p<1
-
-- `demo_5_human.m` : test on a human face
-
-- `demo_6_comic.m` : test on a comic book to illustrate estimation using Geman-McClure's function, as well as a failure case of our method: albedo estimation is perfect, but shape is not satisfactory around black areas.
-
-- `demo_7_dental.m` : test on a plaster dentail with uniform albedo. Illustrates another failure case: due to strong shadowing, estimated albedo and shape are corrupted in areas where shadows appear in most of the images. 
+- `demo_3_semicalibrated_color_robust_ps.m` : same, but automatically inferring the lighting intensities. Instead of the optimization over the rank-1 matrix manifold as avised in [2], this script performs simple alternating optimization. Convergence guarantees may be lost, but in practice the same results are obtained. IMPORTANT: in this case the depth initialization is crucial !
  
 
 ## Dependencies

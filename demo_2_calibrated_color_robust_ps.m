@@ -71,12 +71,12 @@ drawnow
 
 %%% Set parameters
 disp('Setting parameters');
-params.precond = 'cmg'; % Use multigrid preconditioner
-params.z0 = 700*double(data.mask); % Initial depth map: a plane at 700mm from camera
-params.estimator = 'Cauchy'; % Cauchy M-estimator
-params.lambda = 0.1; % Cauchy's scale parameter
-params.indices = 1:nimgs; % Use all data
-params.ratio = 1; % Do not downsample
+params.precond = 'ichol'; % Preconditioner
+params.z0 = 500*ones(size(data.mask)); % Initial depth map: a plane at 500mm from camera
+params.estimator = 'Lp'; % Robust M-estimator
+params.lambda = 0.7; % M-estimator parameter
+params.scales = 6; % Number of pyramid levels
+params.ratio = 1; % Downsample by ratio>1 for faster results
 params.self_shadows = 1; % Explicitly take into account self-shadows
 params.display = 1; % Display result at each iteration
 

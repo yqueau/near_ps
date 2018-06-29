@@ -75,13 +75,13 @@ drawnow
 
 %%% Set parameters
 disp('Setting parameters');
-params.precond = 'cmg'; % Use multigrid preconditioner
-params.z0 = 700*double(data.mask); % Initial depth map: a plane at 700mm from camera
+params.precond = 'ichol'; % Preconditioner
+params.z0 = 500*ones(size(data.mask)); % Initial depth map: a plane at 500mm from camera
 params.estimator = 'LS'; % Least-squares estimation
-params.indices = 2:nimgs-2; % Removes brightest and two lowest levels in each pixel
-params.ratio = 8; % Downsample by a factor of 8 for super-fast results 
+params.scales = 8; % Number of pyramid levels
+params.ratio = 1; % Downsample by ratio>1 for faster results
 params.self_shadows = 0; % Do not explicitly take into account self-shadows
-params.display = 0; % Do not display result at each iteration
+params.display = 1; % Do not display result at each iteration
 
 %%% Solve photometric stereo
 disp('Solving photometric stereo');
