@@ -63,6 +63,8 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 %		- PARAMS.lambda: parameter of the robust estimator
 %			(default: 0, since LS estimator requires no estimator)
 %			(we recommend e.g. 0.1 for Cauchy)
+%		- PARAMS.zeta: hyper-parameter controlling how close we stay from z0
+%			(default: 0)
 %		- PARAMS.self_shadows: binary variable indicating if
 %		self-shadows are included in the model or not	
 %			(default: 1)
@@ -239,6 +241,14 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	if(~strcmp(estimator,'LS') & lambda == 0)
 		disp('ERROR: a strictly positive estimator parameter must be set in PARAMS.lambda for robust M-estimation');
 	end
+	% Check fidelity's parameter
+	if(~isfield(params,'zeta'))
+		params.zeta = 0;
+	end
+	zeta = params.zeta; clear params.zeta;
+	if(zeta < 0)
+		disp('ERROR: a positive fidelity must be set in PARAMS.zeta');
+	end	
 	% Check self shadows
 	if(~isfield(params,'self_shadows'))
 		disp('WARNING: self_shadows parameter not provided in PARAMS.self_shadows, using default values')
@@ -572,6 +582,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 			energy = energy+J_fcn(rho_tilde(:,ch),psi(:),Ich(:),phich,Wch(:));
 		end
 		energy = energy./(npix*nimgs*nchannels);
+		energy = energy + zeta*sum((z_tilde(:)-z0(:)).^2)/npix; 
 		clear Ich psich
 		disp(sprintf('== it. 0 - energy : %.20f',energy));
 		disp(' ');
@@ -650,9 +661,11 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 			At = transpose(A);
 			M = At*spdiags(D(:),0,nimgs*npix*nchannels,nimgs*npix*nchannels)*A;
 			M = M/(nimgs*npix*nchannels);
+			M = M+zeta*speye(npix)/npix;
 			
 			rhs = repmat(chi,[1 nchannels]).*(rho_rep).*(rho_rep.*(-repmat(psi,[1 nchannels]))+reshape(I,npix,nimgs*nchannels)).*reshape(w,npix,nimgs*nchannels);
 			rhs = At*rhs(:)/(nimgs*npix*nchannels);
+			rhs = rhs+zeta*(z0(:)-z_tilde(:))/npix;
 			clear rho_rep
 			
 			% Recompute the preconditioner every 5 iterations

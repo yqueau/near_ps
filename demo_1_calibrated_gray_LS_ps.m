@@ -80,8 +80,9 @@ params.z0 = 500*ones(size(data.mask)); % Initial depth map: a plane at 500mm fro
 params.estimator = 'LS'; % Least-squares estimation
 params.scales = 8; % Number of pyramid levels
 params.ratio = 1; % Downsample by ratio>1 for faster results
-params.self_shadows = 0; % Do not explicitly take into account self-shadows
+params.self_shadows = 1; % Do or do not explicitly take into account self-shadows
 params.display = 1; % Do not display result at each iteration
+params.zeta = 0.0; % Fidelity to z0 ==> CHRISTOPH: THIS PARAMETER CONTROLS WHAT YOU WANT
 
 %%% Solve photometric stereo
 disp('Solving photometric stereo');
