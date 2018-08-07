@@ -44,7 +44,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 %		- CALIB.mu:	NIMGS x 1 anisotropy factor 
 %				(default: zeros(NIMGS,1))
 %		- CALIB.Dir:	NIMGS x 3 orientations 
-%			(default: [zeros(NIMGS,3);zeros(NIMGS,3);ones(NIMGS,1)])
+%			(default: [zeros(NIMGS,1);zeros(NIMGS,1);ones(NIMGS,1)])
 %
 %	=== PARAMETERS ===
 %	- Optional fields:
@@ -193,7 +193,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	% Check orientations
 	if(~isfield(calib,'Dir'))
 		disp('WARNING: orientations not provided in CALIB.Dir, using default values')
-		calib.Dir = [zeros(nimgs,3);zeros(nimgs,3);ones(nimgs,3)];
+		calib.Dir = [zeros(nimgs,1);zeros(nimgs,1);ones(nimgs,3)];
 	end
 	Dir = double(calib.Dir); clear calib.Dir;
 	if(size(Dir,1)~=nimgs | size(Dir,2)~=3 | ndims(Dir) >2)
