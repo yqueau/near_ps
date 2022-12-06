@@ -193,7 +193,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 	% Check orientations
 	if(~isfield(calib,'Dir'))
 		disp('WARNING: orientations not provided in CALIB.Dir, using default values')
-		calib.Dir = [zeros(nimgs,1);zeros(nimgs,1);ones(nimgs,3)];
+		calib.Dir = [zeros(nimgs,1),zeros(nimgs,1),ones(nimgs,1)];
 	end
 	Dir = double(calib.Dir); clear calib.Dir;
 	if(size(Dir,1)~=nimgs | size(Dir,2)~=3 | ndims(Dir) >2)
@@ -353,10 +353,7 @@ function [XYZ,N,rho,Phi,mask,tab_nrj] = near_ps(data,calib,params)
 		params.precond = 'ichol';
 	end
 	precond = params.precond; clear params.precond;	
-	if(~strcmp(precond,'cmg') & ~strcmp(precond,'ichol') & ~strcmp(precond,'jacobi') & ~strcmp(precond,'gs'))
-		disp('ERROR: unknown preconditioner');
-		return;
-	end
+	
 	% Check display
 	if(~isfield(params,'display'))
 		disp('WARNING: display parameter not provided in PARAMS.display, using default values')
